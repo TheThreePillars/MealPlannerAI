@@ -1,0 +1,19 @@
+name: Deploy MealPlannerAI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Deploy Backend to Render
+        run: cd backend && render deploy
+
+      - name: Deploy Frontend to Vercel
+        run: cd frontend && vercel deploy --prod
