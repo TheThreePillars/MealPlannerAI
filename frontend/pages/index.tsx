@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import supabase from "../lib/supabase";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/
 
 export default function Home() {
   const [meals, setMeals] = useState<any[]>([]);
