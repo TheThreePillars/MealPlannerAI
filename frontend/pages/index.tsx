@@ -1,43 +1,64 @@
 import { useEffect, useState } from "react";
 import supabase from "../lib/supabase";
-import { useDraggable, useDroppable } from "@dnd-kit/
+import { User } from "@supabase/supabase-js"; // ✅ Import Supabase User type
+
+// ✅ Define Meal type
+interface Meal {
+  id: number;
+  name: string;
+  calories: number;
+}
 
 export default function Home() {
-  const [meals, setMeals] = useState<any[]>([]);
-  const [mealName, setMealName] = useState("");
-  const [calories, setCalories] = useState("");
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [mealName, setMealName] = useState<string>("");
+  const [calories, setCalories] = useState<string>("");
   const [aiMealSuggestion, setAiMealSuggestion] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<any | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [darkMode, setDarkMode] = useState<boolean>(false);
 
-  // Fetch user session
+  // ✅ Fetch user session & keep it updated
   useEffect(() => {
-    async function getUser() {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-    }
-    getUser();
+    const getSession = async () => {
+      const { data: session, error } = await supabase.auth.getSession();
+      if (error) console.error("Error fetching session:", error);
+      setUser(session?.session?.user || null);
+    };
+
+    getSession();
+
+    // ✅ Listen for auth changes (sign in/out)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+        setUser(session?.user || null);
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
-  // Fetch saved meals from Supabase
+  // ✅ Fetch saved meals from Supabase
   useEffect(() => {
     async function fetchMeals() {
-      let { data, error } = await supabase.from("meals").select("*");
+      const { data, error } = await supabase.from("meals").select<Meal>("*");
       if (error) console.error("Error fetching meals:", error);
       else setMeals(data || []);
     }
     fetchMeals();
   }, []);
 
-  // Add a new meal
+  // ✅ Add a new meal
   async function addMeal() {
     if (!mealName || !calories) return;
-    
-    let { data, error } = await supabase
+
+    const { data, error } = await supabase
       .from("meals")
-      .insert([{ name: mealName, calories: parseInt(calories) }]);
-    
+      .insert([{ name: mealName, calories: parseInt(calories, 10) }])
+      .select("*");
+
     if (error) console.error("Error adding meal:", error);
     else setMeals([...meals, ...(data || [])]);
 
@@ -45,31 +66,36 @@ export default function Home() {
     setCalories("");
   }
 
-  // Delete a meal
+  // ✅ Delete a meal
   async function deleteMeal(id: number) {
-    let { error } = await supabase.from("meals").delete().eq("id", id);
+    const { error } = await supabase.from("meals").delete().eq("id", id);
     if (error) console.error("Error deleting meal:", error);
     else setMeals(meals.filter((meal) => meal.id !== id));
   }
 
-  // Generate AI-based meal suggestion
+  // ✅ Generate AI-based meal suggestion
   async function generateMeal() {
     setLoading(true);
-    
-    let response = await fetch("/api/generate_meal", {
-      method: "POST",
-      body: JSON.stringify({ diet: "balanced", calories: 600 }),
-    });
+    try {
+      const response = await fetch("/api/generate_meal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diet: "balanced", calories: 600 }),
+      });
 
-    let result = await response.json();
-    setAiMealSuggestion(result.meal_suggestion);
+      const result = await response.json();
+      setAiMealSuggestion(result.meal_suggestion);
+    } catch (error) {
+      console.error("Error generating meal:", error);
+    }
     setLoading(false);
   }
 
-  // Handle authentication
+  // ✅ Handle Google authentication
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
+      options: { redirectTo: window.location.origin },
     });
     if (error) console.error("Error signing in:", error);
   }
@@ -83,7 +109,7 @@ export default function Home() {
     <div className={`${darkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900"} flex flex-col items-center justify-center min-h-screen p-6`}>
       <h1 className="text-4xl font-bold text-blue-500">Meal Planner AI 🍽️</h1>
 
-      {/* Dark Mode Toggle */}
+      {/* ✅ Dark Mode Toggle */}
       <button
         onClick={() => setDarkMode(!darkMode)}
         className="mt-4 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
@@ -147,6 +173,7 @@ export default function Home() {
             )}
           </ul>
 
+          {/* ✅ Generate AI meal button */}
           <button
             onClick={generateMeal}
             className="mt-6 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
@@ -154,6 +181,8 @@ export default function Home() {
             {loading ? "Generating..." : "Generate AI Meal Plan"}
           </button>
 
+          {/* ✅ Display AI meal suggestion */}
+          {loading && <p className="mt-4 text-gray-500">Generating meal...</p>}
           {aiMealSuggestion && (
             <p className="mt-4 p-4 bg-white text-black shadow">{aiMealSuggestion}</p>
           )}
