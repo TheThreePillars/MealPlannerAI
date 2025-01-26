@@ -1,7 +1,11 @@
-import type { NextConfig } from "next";
+import { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  reactStrictMode: true,
+  // REMOVE OR COMMENT OUT THIS LINE IF IT EXISTS:
+  // experimental: {
+  //   appDir: true,
+  // },
 };
 
 export default nextConfig;
